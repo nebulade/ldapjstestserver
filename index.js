@@ -8,6 +8,8 @@ var gPort = process.env.PORT || 3002;
 
 var gServer = null;
 
+var baseDN = 'ou=users,dc=example';
+
 // data
 var users = [{
     id: 'admin',
@@ -49,7 +51,7 @@ var logger = {
 
 gServer = ldap.createServer({ log: logger });
 
-gServer.search('ou=users,dc=cloudron', function(req, res, next) {
+gServer.search(baseDN, function(req, res, next) {
 
     console.log('--- Search ---');
     console.log('dn:     ', req.dn.toString());
@@ -61,7 +63,7 @@ gServer.search('ou=users,dc=cloudron', function(req, res, next) {
 
         result.forEach(function (entry) {
             var tmp = {
-                dn: 'dn=' + entry.id + ',ou=users,dc=cloudron',
+                dn: 'dn=' + entry.id + ',' + baseDN,
                 attributes: {
                     objectclass: ['user'],
                     uid: entry.id,
@@ -82,12 +84,11 @@ gServer.search('ou=users,dc=cloudron', function(req, res, next) {
     });
 });
 
-gServer.bind('ou=users,dc=cloudron', function(req, res, next) {
+gServer.bind(baseDN, function(req, res, next) {
     console.log('bind DN: ' + req.dn.toString());
     console.log('bind PW: ' + req.credentials);
 
     var commonName = req.dn.rdns[0].attrs.cn.value;
-    console.log('commonName:', commonName)
     if (!commonName) return next(new ldap.NoSuchObjectError(req.dn.toString()));
 
     user.verify(commonName, req.credentials, function (error, result) {
@@ -104,6 +105,7 @@ gServer.bind('ou=users,dc=cloudron', function(req, res, next) {
 gServer.listen(gPort, function () {
     console.log('LDAP test server running on port ' + gPort);
     console.log('');
+    console.log('BaseDN:', baseDN);
     console.log('Available test users:');
     console.dir(users);
     console.log('');

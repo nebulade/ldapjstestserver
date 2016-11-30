@@ -9,6 +9,8 @@ var gPort = process.env.PORT || 3002;
 var gServer = null;
 
 var baseDN = 'ou=users,dc=example';
+var bindDn = 'admin';
+var bindPassword = 'password';
 
 // data
 var users = [{
@@ -32,6 +34,8 @@ var user = {
     },
     verify: function (username, password, callback) {
         console.log('verify:', username, password);
+
+        if (username === bindDn && password === bindPassword) return callback(null, {});
 
         var tmp = users.filter(function (u) { return u.username === username; });
 
@@ -68,7 +72,7 @@ gServer.search(baseDN, function(req, res, next) {
                     objectclass: ['user'],
                     uid: entry.id,
                     mail: entry.mail,
-                    displayname: entry.username,
+                    displayname: entry.displayname,
                     username: entry.username
                 }
             };
@@ -105,7 +109,11 @@ gServer.bind(baseDN, function(req, res, next) {
 gServer.listen(gPort, function () {
     console.log('LDAP test server running on port ' + gPort);
     console.log('');
-    console.log('BaseDN:', baseDN);
+    console.log('BindDN:        ', bindDn);
+    console.log('Bind Password: ', bindPassword);
+    console.log('');
+    console.log('BaseDN:        ', baseDN);
+    console.log('');
     console.log('Available test users:');
     console.dir(users);
     console.log('');

@@ -11,6 +11,7 @@ var gServer = null;
 var baseDN = 'ou=users,dc=example';
 var bindDn = 'admin';
 var bindPassword = 'password';
+var groupDN = 'ou=groups,dc=example';
 
 // data
 var users = [{
@@ -18,13 +19,27 @@ var users = [{
     username: 'admin',
     password: 'test',
     displayname: 'Herbert Burgermeister',
-    mail: 'admin@example.org'
+    givenName: 'Herbert',
+    lastName: 'Burgermeister',
+    mail: 'admin@example.org',
+    admin: true
 }, {
     id: 'normal',
     username: 'normal',
     password: 'test',
     displayname: 'Norman Default',
-    mail: 'normal@example.org'
+    givenName: 'Norman',
+    lastName: 'Default',
+    mail: 'normal@example.org',
+    admin: false
+}];
+
+var groups = [{
+    name: 'users',
+    admin: false
+}, {
+    name: 'admins',
+    admin: true
 }];
 
 // model
@@ -57,7 +72,9 @@ gServer = ldap.createServer({ log: logger });
 
 gServer.search(baseDN, function(req, res, next) {
 
-    console.log('--- Search ---');
+    console.log(req)
+
+    console.log('--- User Search ---');
     console.log('dn:     ', req.dn.toString());
     console.log('scope:  ', req.scope);
     console.log('filter: ', req.filter.toString());
@@ -66,14 +83,20 @@ gServer.search(baseDN, function(req, res, next) {
         if (error) return next(new ldap.OperationsError(error.toString()));
 
         result.forEach(function (entry) {
+            var groups = [ 'cn=users,' + groupDN ];
+            if (entry.admin) groups.push('cn=admins,' + groupDN);
+
             var tmp = {
-                dn: 'dn=' + entry.id + ',' + baseDN,
+                dn: 'cn=' + entry.id + ',' + baseDN,
                 attributes: {
                     objectclass: ['user'],
                     uid: entry.id,
                     mail: entry.mail,
                     displayname: entry.displayname,
-                    username: entry.username
+                    sn: entry.lastName,
+                    givenName: entry.givenName,
+                    username: entry.username,
+                    memberof: groups
                 }
             };
 
@@ -88,7 +111,49 @@ gServer.search(baseDN, function(req, res, next) {
     });
 });
 
+gServer.search(groupDN, function (req, res, next) {
+    console.log('--- Group Search ---');
+    console.log('dn:     ', req.dn.toString());
+    console.log('scope:  ', req.scope);
+    console.log('filter: ', req.filter.toString());
+
+    user.list(function (error, result){
+        if (error) return next(new ldap.OperationsError(error.toString()));
+
+        groups.forEach(function (group) {
+            var dn = ldap.parseDN('cn=' + group.name + ',ou=groups,dc=cloudron');
+            var members = group.admin ? users.filter(function (entry) { return entry.admin; }) : result;
+
+            var tmp = {
+                dn: dn.toString(),
+                attributes: {
+                    objectclass: ['groupOfNames'],
+                    cn: group.name,
+                    memberuid: members.map(function(entry) { return entry.id; })
+                }
+            };
+
+            if ((req.dn.equals(dn) || req.dn.parentOf(dn)) && req.filter.matches(tmp.attributes)) {
+                console.log('Send', tmp);
+                res.send(tmp);
+            }
+        });
+
+        res.end();
+    });
+});
+
+gServer.compare(groupDN, function (req, res, next) {
+    console.log('--- Compare ---');
+    console.log('DN: ' + req.dn.toString());
+    console.log('attribute name: ' + req.attribute);
+    console.log('attribute value: ' + req.value);
+
+    res.end(true);
+});
+
 gServer.bind(baseDN, function(req, res, next) {
+    console.log('--- Bind ---');
     console.log('bind DN: ' + req.dn.toString());
     console.log('bind PW: ' + req.credentials);
 
@@ -112,10 +177,14 @@ gServer.listen(gPort, function () {
     console.log('BindDN:        ', bindDn);
     console.log('Bind Password: ', bindPassword);
     console.log('');
-    console.log('BaseDN:        ', baseDN);
+    console.log('UserBaseDN:    ', baseDN);
+    console.log('GroupBaseDN:   ', groupDN);
     console.log('');
     console.log('Available test users:');
     console.dir(users);
+    console.log('');
+    console.log('Available test groups:');
+    console.dir(groups);
     console.log('');
 });
 

@@ -15,22 +15,22 @@ var groupDN = 'ou=groups,dc=example';
 
 // data
 var users = [{
-    id: 'admin',
+    id: 'id-admin',
     username: 'admin',
-    password: 'test',
+    password: 'admin',
     displayname: 'Herbert Burgermeister',
     givenName: 'Herbert',
     lastName: 'Burgermeister',
     mail: 'admin@example.org',
     admin: true
 }, {
-    id: 'normal',
-    username: 'normal',
-    password: 'test',
+    id: 'id-user',
+    username: 'user',
+    password: 'user',
     displayname: 'Norman Default',
     givenName: 'Norman',
     lastName: 'Default',
-    mail: 'normal@example.org',
+    mail: 'user@example.org',
     admin: false
 }];
 
@@ -174,7 +174,7 @@ gServer.bind(baseDN, function(req, res, next) {
 gServer.listen(gPort, function () {
     console.log('LDAP test server running on port ' + gPort);
     console.log('');
-    console.log('BindDN:        ', bindDn);
+    console.log('BindDN:        ', bindDn, ' - ', `cn=${bindDn},${baseDN}`);
     console.log('Bind Password: ', bindPassword);
     console.log('');
     console.log('UserBaseDN:    ', baseDN);

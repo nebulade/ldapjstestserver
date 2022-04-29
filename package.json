@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "ldapjs": "^2.1.1"
+    "ldapjs": "^2.3.2"
   }
 }
